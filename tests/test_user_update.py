@@ -1,8 +1,4 @@
 import allure
-import requests
-
-from utils.api_urls import USER_URL, REGISTER_URL
-from utils.user_data import generate_unique_user
 
 
 @allure.epic("Stellar Burgers API")
@@ -13,23 +9,17 @@ class TestUserUpdate:
     @allure.description(
         "Authenticated user can update their name and email successfully."
     )
-    def test_update_user_with_auth(self):
-        # Register and login to get a token
-        user = generate_unique_user()
-        reg_resp = requests.post(REGISTER_URL, json=user).json()
-        token = reg_resp["accessToken"]
-        # Update user profile
-        new_name = "NewName"
-        new_email = f"new_{user['email']}"
-        headers = {"Authorization": token}
-        with allure.step("Send PATCH /auth/user with valid token and new name & email"):
-            update_resp = requests.patch(
-                USER_URL, headers=headers, json={"name": new_name, "email": new_email}
-            )
-            assert (
-                update_resp.status_code == 200
-            ), "Expected 200 OK for valid profile update"
-        with allure.step("Verify response contains updated user data"):
+    def test_update_user_with_auth(self, authenticated_user):
+        with allure.step("Update user profile and verify changes"):
+            new_name = "NewName"
+            # Get current user email to modify it
+            user_info_resp = authenticated_user.get_user_info()
+            assert user_info_resp.status_code == 200, "Failed to get user info"
+            current_email = user_info_resp.json()["user"]["email"]
+            new_email = f"new_{current_email}"
+            
+            update_resp = authenticated_user.update_user({"name": new_name, "email": new_email})
+            assert update_resp.status_code == 200, "Expected 200 OK for valid profile update"
             body = update_resp.json()
             assert body.get("success") is True
             assert body["user"]["name"] == new_name
@@ -39,24 +29,26 @@ class TestUserUpdate:
     @allure.description(
         "Attempt to update user profile without a token should fail with 401 and no data change."
     )
-    def test_update_user_without_auth(self):
-        # Create a user and get their token and current data
-        user = generate_unique_user()
-        reg = requests.post(REGISTER_URL, json=user).json()
-        token = reg["accessToken"]
-        original_name = user["name"]
-        # Attempt to update without providing auth header
-        new_name = "UnauthorizedName"
-        with allure.step("Send PATCH /auth/user without token in header"):
+    def test_update_user_without_auth(self, authenticated_user):
+        with allure.step("Attempt unauthorized update and verify error"):
+            # Get original user data for verification
+            user_info_resp = authenticated_user.get_user_info()
+            assert user_info_resp.status_code == 200, "Failed to get user info"
+            original_name = user_info_resp.json()["user"]["name"]
+            
+            # Make unauthorized request using raw requests
+            import requests
+            from utils.api_urls import USER_URL
+            new_name = "UnauthorizedName"
             response = requests.patch(USER_URL, json={"name": new_name})
             assert response.status_code == 401, "Expected 401 for update without auth"
-        with allure.step("Verify error message and no change in user data"):
             error = response.json()
             assert (
                 error.get("message") == "You should be authorised"
             ), f"Unexpected error message: {error.get('message')}"
-            headers = {"Authorization": token}
-            profile_resp = requests.get(USER_URL, headers=headers)
+            
+            # Verify user data unchanged
+            profile_resp = authenticated_user.get_user_info()
             assert profile_resp.status_code == 200
             profile = profile_resp.json()
             assert (

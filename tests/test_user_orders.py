@@ -1,8 +1,4 @@
 import allure
-import requests
-
-from utils.api_urls import REGISTER_URL, INGREDIENTS_URL, ORDERS_URL
-from utils.user_data import generate_unique_user
 
 
 @allure.epic("Stellar Burgers API")
@@ -13,21 +9,14 @@ class TestUserOrders:
     @allure.description(
         "Authenticated user should be able to fetch their order history."
     )
-    def test_get_user_orders_with_auth(self):
-        # Create user, login and create an order
-        user = generate_unique_user()
-        login_data = requests.post(REGISTER_URL, json=user).json()
-        token = login_data["accessToken"]
-        headers = {"Authorization": token}
-        # Create an order to ensure there's at least one order in history
-        ingredient_ids = [requests.get(INGREDIENTS_URL).json()["data"][0]["_id"]]
-        requests.post(ORDERS_URL, headers=headers, json={"ingredients": ingredient_ids})
-        with allure.step("Send GET /orders with valid auth token"):
-            response = requests.get(ORDERS_URL, headers=headers)
-            assert (
-                response.status_code == 200
-            ), "Expected 200 OK for fetching user orders"
-        with allure.step("Verify response contains orders list"):
+    def test_get_user_orders_with_auth(self, authenticated_user, ingredient_ids):
+        with allure.step("Create an order to ensure order history exists"):
+            order_resp = authenticated_user.create_order(ingredient_ids[:1], with_auth=True)
+            assert order_resp.status_code == 200, "Failed to create test order"
+        
+        with allure.step("Fetch user orders and verify response"):
+            response = authenticated_user.get_user_orders()
+            assert response.status_code == 200, "Expected 200 OK for fetching user orders"
             data = response.json()
             assert data.get("success") is True
             assert "orders" in data, "Response should contain 'orders'"
@@ -40,13 +29,13 @@ class TestUserOrders:
     @allure.description(
         "Requesting order history without a token should be unauthorized."
     )
-    def test_get_user_orders_without_auth(self):
-        with allure.step("Send GET /orders without auth header"):
+    def test_get_user_orders_without_auth(self, api_client):
+        with allure.step("Fetch orders without authentication and verify error"):
+            # Manually call the orders endpoint without auth
+            import requests
+            from utils.api_urls import ORDERS_URL
             response = requests.get(ORDERS_URL)  # no headers
-            assert (
-                response.status_code == 401
-            ), "Expected 401 for fetching orders without auth"
-        with allure.step("Verify error message for unauthorized request"):
+            assert response.status_code == 401, "Expected 401 for fetching orders without auth"
             error = response.json()
             assert (
                 error.get("message") == "You should be authorised"
