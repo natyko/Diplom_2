@@ -1,87 +1,40 @@
-# Graduation Project. Assignment 2: API Tests
+# Stellar Burgers API Test Suite
 
-Automated API tests for the Stellar Burgers burger ordering service.
+Automated API tests for the Stellar Burgers burger ordering service — a multi-page web app with authentication, order management, and user profiles.
 
----
+**Tech:** Python · Pytest · requests · conftest fixtures · parametrized test data
 
-## 📁 Project Structure
+## Coverage
 
-```text
-tests/              # Pytest test modules for each feature
-                    # Example: user login, logout, order creation, etc.
 
-utils/              # Utility modules
-                    # Includes API endpoint URLs and test data generators
+User authentication: registration, login, logout, token refresh
+User profile: data retrieval and updates  
+Order creation: authenticated and unauthenticated flows
+Order history: retrieval per user
+Negative paths: invalid credentials, missing tokens, malformed payloads
 
-requirements.txt    # Python dependencies
 
-pytest.ini          # Pytest configuration
+## Project Structure
 
-README.md           # Project documentation and usage instructions
+```
+tests/         # Pytest test modules organized by feature (auth, orders, profile)
+utils/         # Reusable API client + test data generators
+conftest.py    # Shared fixtures (user creation, token management, cleanup)
+pytest.ini     # Pytest configuration
+requirements.txt
 ```
 
----
+## Design Notes
 
-## 🚀 Installation
 
-Install project dependencies:
+**API client abstraction** — endpoint URLs and request logic isolated in `utils/`, keeping tests focused on behavior, not transport.
+**Fixture-driven setup/teardown** — each test gets a fresh authenticated user; cleanup runs automatically.
+**Parametrized test data** — negative paths covered without test duplication.
+
+
+## Run
 
 ```bash
 pip install -r requirements.txt
+pytest tests/ -v
 ```
-
----
-
-## ▶️ Running Tests
-
-Run all API tests using Pytest:
-
-```bash
-pytest tests/ -v --tb=short --alluredir=allure-results
-```
-
----
-
-## 📊 Allure Report
-
-Generate and open the Allure report:
-
-```bash
-allure serve allure-results
-```
-
----
-
-## ✅ Tested Features
-
-- User registration
-- User login
-- User logout
-- Creating orders
-- Retrieving user orders
-- Authorization validation
-- API response validation
-
----
-
-## 🛠 Technologies
-
-- Python
-- pytest
-- requests
-- allure-pytest
-
----
-
-## 👩‍💻 Author
-
-Natalia Kozit  
-QA Automation Engineer
-
-GitHub: [@natyko](https://github.com/natyko)
-
----
-
-## 📌 About
-
-API automated testing project for the Stellar Burgers service using Python, Pytest, Requests, and Allure Report.
